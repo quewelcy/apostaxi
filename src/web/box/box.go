@@ -15,11 +15,7 @@ import (
 )
 
 //DataPath location of knowledge
-var DataPath = getDataPath()
-
-func getDataPath() string {
-	return os.Getenv("APOSTAXI_KRIFES_LOCATION")
-}
+var DataPath = os.Getenv("APOSTAXI_KRIFES_LOCATION")
 
 //RegisterPath registers web path
 func RegisterPath(path string) {
