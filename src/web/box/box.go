@@ -3,10 +3,9 @@ package box
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"html/template"
-	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -16,94 +15,68 @@ import (
 
 //DataPath location of knowledge
 var DataPath = os.Getenv("APOSTAXI_KRIFES_LOCATION")
+var htmlPath = "/box"
 
 //RegisterPath registers web path
-func RegisterPath(path string) {
-	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		aWriter(w)
-	})
-	http.HandleFunc("/dir", func(w http.ResponseWriter, r *http.Request) {
-		dirWriter(w, r.FormValue("path"))
-	})
-	http.HandleFunc("/file", func(w http.ResponseWriter, r *http.Request) {
-		fileWriter(w, r.FormValue("path"))
-	})
+func RegisterPath() {
+	http.HandleFunc(htmlPath, boxHandler)
 }
 
-func fileWriter(w io.Writer, path string) {
-	b := readFile(path)
-	w.Write(b.Bytes())
-}
-
-func dirWriter(w io.Writer, path string) {
-	b := readPath(path)
-	w.Write(b.Bytes())
-}
-
-func aWriter(w io.Writer) {
-	datas := map[string]template.HTML{
-		"Pillar": readRoot(DataPath),
+func boxHandler(w http.ResponseWriter, r *http.Request) {
+	data := map[string]template.HTML{
+		"dir":     template.HTML(readDir(r.FormValue("p"))),
+		"content": template.HTML(getContent(r.FormValue("c"))),
 	}
-	tmpl, err := template.ParseFiles("../res/template/title.tm")
+	tmpl, _ := template.ParseFiles("../res/template/title.tm")
+	tmpl.Execute(w, data)
+}
+
+func readDir(path string) string {
+	if path == "" {
+		path = DataPath
+	}
+	files, err := ioutil.ReadDir(path)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	err = tmpl.Execute(w, datas)
-	if err != nil {
-		panic(err)
-	}
-}
 
-func readPath(path string) bytes.Buffer {
-	fileDir, err := ioutil.ReadDir(path)
-	if err != nil {
-		panic(err)
-	}
 	var b bytes.Buffer
-	bw := bufio.NewWriter(&b)
-	for _, fi := range fileDir {
-		includePath := !fi.IsDir()
-		bw.WriteString("<li><a ic-push-url='true' ic-post-to='/")
-		if includePath {
-			bw.WriteString("file")
-		} else {
-			bw.WriteString("dir")
-		}
-		bw.WriteString("?path=")
-		bw.WriteString(path)
-		if !strings.HasSuffix(path, "/") {
-			bw.WriteString("/")
-		}
-		bw.WriteString(fi.Name())
-		bw.WriteString("' ic-target='#")
-		if includePath {
-			bw.WriteString("contentid")
-		} else {
-			bw.WriteString("pillarRight")
-		}
-		bw.WriteString("'>")
-		bw.WriteString(fi.Name())
-		bw.WriteString("</a></li>")
+	for _, file := range files {
 
-		//todo move into template
-		//todo read
+		var href string
+		if file.IsDir() {
+			href = htmlPath + "?p=" + getProperPath(path, file.Name())
+		} else {
+			href = htmlPath + "?p=" + path + "&c=" + getProperPath(path, file.Name())
+		}
+		data := map[string]string{
+			"href":  href,
+			"fname": file.Name(),
+		}
+		tmpl, _ := template.ParseFiles("../res/template/file.tm")
+		tmpl.Execute(&b, data)
 	}
-	bw.Flush()
-	return b
+	return b.String()
 }
 
-func readRoot(path string) template.HTML {
-	b := readPath(path)
-	return template.HTML(b.String())
+func getContent(p string) string {
+	if p == "" {
+		return ""
+	}
+	b := readMdFile(p)
+	return b.String()
 }
 
-func readFile(path string) bytes.Buffer {
-	fmt.Println("received path", path)
-	npath := "/pic" + strings.Replace(path, DataPath, "", -1)
-	lind := strings.LastIndex(npath, "/") + 1
-	npath = npath[0:lind]
-	fmt.Println("cut path", npath, lind)
+func getProperPath(dir, file string) string {
+	if strings.HasSuffix(dir, string(os.PathSeparator)) {
+		return dir + file
+	}
+	return dir + string(os.PathSeparator) + file
+}
 
+func readMdFile(path string) bytes.Buffer {
+	lind := strings.LastIndex(path, string(os.PathSeparator))
+	npath := "/pic/?p=" + strings.Replace(path[0:lind+1], `\`, `\\`, -1)
 	f, _ := ioutil.ReadFile(path)
 	sf := strings.Replace(string(f), "](", "]("+npath, -1)
 	md := blackfriday.MarkdownBasic([]byte(sf))
@@ -111,6 +84,6 @@ func readFile(path string) bytes.Buffer {
 	var b bytes.Buffer
 	bw := bufio.NewWriter(&b)
 	bw.Write(md)
-	bw.Flush() //todo get rid of unnecessay code
+	bw.Flush()
 	return b
 }

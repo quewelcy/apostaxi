@@ -17,9 +17,8 @@ body {
 .pillar-set {
     color: white;
     margin: 10px;
-    padding-left: 10px;
+    padding: 0;
     float: left;
-    border-left: 1px #4e4e4e solid;
 }
 
 .pillar li {
