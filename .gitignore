@@ -15,3 +15,4 @@
 .vscode/
 pkg/
 debug
+no_commit*

@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 type byYearRow []YearRow
@@ -27,7 +29,8 @@ func ReadSourceAndSaveTimeline(readPath, place, writePath string, overwrite bool
 		defer file.Close()
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			yr := WalkRow(scanner.Text(), place)
+			yr := LookupYearRow(scanner.Text(), place)
+			log.Println("parsed", yr)
 			if len(yr) > 0 {
 				timeline = append(timeline, yr...)
 			}
@@ -69,4 +72,25 @@ func ReadTimeline(path string) []YearRow {
 		log.Fatal(err)
 	}
 	return timeline
+}
+
+func yearRowFromString(str string) YearRow {
+	r := YearRow{}
+	colonInd := strings.Index(str, "|")
+	if colonInd > 0 {
+		rangeInd := strings.Index(str[0:colonInd], ",")
+		if rangeInd > 0 {
+			num, _ := strconv.ParseInt(str[:rangeInd], 10, 64)
+			r.Years = append(r.Years, int(num))
+			num, _ = strconv.ParseInt(str[rangeInd+len(",")+1:colonInd], 10, 64)
+			r.Years = append(r.Years, int(num))
+		} else {
+			num, _ := strconv.ParseInt(str[:colonInd], 10, 64)
+			r.Years = append(r.Years, int(num))
+		}
+		colonInd2 := colonInd + 1 + strings.Index(str[colonInd+1:], "|")
+		r.Place = str[colonInd+1 : colonInd2]
+		r.Context = str[colonInd2+1:]
+	}
+	return r
 }

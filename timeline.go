@@ -1,15 +1,27 @@
-package timeline
+package main
 
 import (
 	"bytes"
 	"html/template"
 	"net/http"
-	"os"
 	"strconv"
 
-	"tools"
-	"years"
+	"github.com/quewelcy/apostaxi/years"
 )
+
+//fixme
+var resPath = `c:\Users\quewe\gosrc\src\github.com\quewelcy\apostaxi`
+var tlPath = `c:\Users\quewe\cloud\apo\out.txt`
+
+//Start http://localhost:4444/tl
+func StartTimeLine() {
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(resPath+"/res/public"))))
+	http.HandleFunc("/pic/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, r.FormValue("p"))
+	})
+	RegisterPath("/tl")
+	http.ListenAndServe(":4444", nil)
+}
 
 //RegisterPath registers web path
 func RegisterPath(path string) {
@@ -20,13 +32,13 @@ func RegisterPath(path string) {
 }
 
 func timeLineWriter(w http.ResponseWriter, reqPlaces []string) {
-	timelineLeft, timelineRight, allPlaces := readTimeLine(os.Getenv("APOSTAXI_TIMELINE_LOCATION"), reqPlaces)
+	timelineLeft, timelineRight, allPlaces := readTimeLine(tlPath, reqPlaces)
 	datas := map[string]template.HTML{
 		"TimelineLeft":  timelineLeft,
 		"TimelineRight": timelineRight,
 		"Places":        allPlaces,
 	}
-	tmpl, err := template.ParseFiles("../res/template/tl.tm")
+	tmpl, err := template.ParseFiles(resPath + "/res/template/tl.tm")
 	if err != nil {
 		panic(err)
 	}
@@ -37,7 +49,7 @@ func timeLineWriter(w http.ResponseWriter, reqPlaces []string) {
 }
 
 func readTimeLine(tlPath string, reqPlaces []string) (template.HTML, template.HTML, template.HTML) {
-	tmpl, err := template.ParseFiles("../res/template/point.tm")
+	tmpl, err := template.ParseFiles(resPath + "/res/template/point.tm")
 	if err != nil {
 		panic(err)
 	}
@@ -46,7 +58,7 @@ func readTimeLine(tlPath string, reqPlaces []string) (template.HTML, template.HT
 	pointLeft := bytes.Buffer{}
 	for _, p := range years.ReadTimeline(tlPath) {
 		places[p.Place] = true
-		if tools.ContainsString(reqPlaces, p.Place) {
+		if containsString(reqPlaces, p.Place) {
 			datas := map[string]template.HTML{
 				"Title": template.HTML(p.Context),
 				"Desc":  "unknown",
@@ -68,7 +80,7 @@ func readTimeLine(tlPath string, reqPlaces []string) (template.HTML, template.HT
 			"Selected": selectedOption(reqPlaces, p),
 			"Value":    p,
 		}
-		tmpl, err := template.ParseFiles("../res/template/option.tm")
+		tmpl, err := template.ParseFiles(resPath + "/res/template/option.tm")
 		if err != nil {
 			panic(err)
 		}
@@ -78,10 +90,19 @@ func readTimeLine(tlPath string, reqPlaces []string) (template.HTML, template.HT
 }
 
 func selectedOption(places []string, place string) string {
-	if tools.ContainsString(places, place) {
+	if containsString(places, place) {
 		return "selected"
 	}
 	return ""
+}
+
+func containsString(strs []string, str string) bool {
+	for _, s := range strs {
+		if s == str {
+			return true
+		}
+	}
+	return false
 }
 
 func link(u string) string {
