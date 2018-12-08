@@ -14,15 +14,18 @@ var tokens = []token{
 	token{"до н.э.", -1, 0},
 	token{"до новой эры", -1, 0},
 	token{"до нашей эры", -1, 0},
+	token{"до р. х.", -1, 0},
+	token{"до р.х.", -1, 0},
+	token{"до Р. Х.", -1, 0},
+	token{"год", 1, 0},
+	token{"гг.", 1, 0},
+	token{"г.", 1, 0},
+
+	token{"years ago", -1, 2000},
 	token{"BC", -1, 0},
 	token{"bc", -1, 0},
 	token{"B.C.", -1, 0},
 	token{"b.c.", -1, 0},
-	token{"до р. х.", -1, 0},
-	token{"до р.х.", -1, 0},
-	token{"год", 1, 0},
-	token{"гг.", 1, 0},
-	token{"г.", 1, 0},
 }
 
 var multipliers = []multiplier{
